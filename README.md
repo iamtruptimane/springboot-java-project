@@ -1,156 +1,265 @@
-# HOMESTEADERINDIA  🌱
+Here is your deployment documentation converted into a clean and structured `README.md` file format:
 
+---
 
-![Spring Boot](https://img.shields.io/badge/Spring_Boot-2.7.1-green)
-![HTML](https://img.shields.io/badge/HTML-5-red)
-![CSS](https://img.shields.io/badge/CSS-3-blue)
-![JavaScript](https://img.shields.io/badge/JavaScript-ES6-yellow)
-![Bootstrap](https://img.shields.io/badge/Bootstrap-5.0-purple)
-![Hibernate](https://img.shields.io/badge/Hibernate-JPA-yellreen)
-![API](https://img.shields.io/badge/API-OpenWeatherMap-orange)
+````markdown
+# 🚀 Spring Boot + JSP + PostgreSQL Deployment on AWS (3-Tier Architecture)
 
-![Logo](https://github.com/GauravPatilGR/HOMESTEADERINDIA-Spring-Boot-Java-Project/assets/123281827/2d3f8385-fcac-4371-be42-5035260eea3a)
+---
 
-## Table of Contents
+## 🧱 1. Architecture Overview
 
-- [What is HOMESTEADERINDIA?](#what-is-homesteaderindia)
-- [Modules](#modules)
-- [Installation](#installation)
-- [Documentation](#documentation)
-- [API Reference](#api-reference)
-- [Features](#features)
-- [Youtube Overview](#YoutubeOverview)
+| **Tier** | **Purpose**         | **Subnet Type**  | **Component**      | **EC2 Role**              |
+|---------|---------------------|------------------|--------------------|---------------------------|
+| Tier 1  | Frontend (UI)       | Public Subnet    | Tomcat + JSP App   | Handles browser requests  |
+| Tier 2  | Application (Logic) | Private Subnet   | Spring Boot        | Handles business logic    |
+| Tier 3  | Database (Storage)  | Private Subnet   | PostgreSQL DB      | Stores persistent data    |
 
- What is  HOMESTEADERINDIA?
+---
 
-1) It is a web-based open discussion portal providing information and solutions about crops, fertilizers, vegetables, Seeds, Fruits, and climate to small farmers and agricultural students.
+## 🌐 2. VPC & Subnet Setup
 
-2) Additionally Agro Agencies help farmers in making decisions on the current market and best prices of crops and herbs. Information regarding major crop markets and the prevalent best price for the crops are published regularly. feedback can be forwarded to an admin officer, and information pages of the system are dynamic so that agricultural officers can change it when needed.
+### 2.1 Create a VPC
 
-3)  The portal provides soil analysis for various regions and suggestions based on the soil condition and climate. It explores questions such as: “Which fertilizers to use where and in what quantity”, “Which crop, vegetable, or herb should be grown 
-where and in which season”.
+- **Name:** `SpringBoot-VPC`
+- **CIDR block:** `10.0.0.0/16`
+- **DNS Hostnames:** Enabled ✅
 
-4) Additionally, Homesteader helps farmers and agricultural students in making decisions on the current market and best prices of crops and herbs. Information regarding major crop markets and the prevalent best price for the crops are 
-published regularly.
+### 2.2 Create Subnets
 
-5) Homesteader also features training, training can be requested by students and the general public.
+| Subnet Name    | CIDR Block    | AZ           | Type    |
+|----------------|---------------|--------------|---------|
+| Public-Subnet  | 10.0.1.0/24   | ap-south-1a  | Public  |
+| Private-App    | 10.0.2.0/24   | ap-south-1a  | Private |
+| Private-DB     | 10.0.3.0/24   | ap-south-1a  | Private |
 
+> ✅ Enable Auto-Assign Public IP for **Public Subnet**.
 
+### 2.3 Create Internet Gateway
 
+- **Name:** `SpringBoot-IGW`
+- **Attach** to `SpringBoot-VPC`
 
-## Modules
+### 2.4 Create Route Tables
 
-Admin
-- Login
-- Register sub admin
-- View registered Agro Agencies.
-- Add New information about crops, herbs, fertilizers, vegetables, Seeds, and Fruits.
-- Update current market and best prices of crops and herbs.
-- Add climate changes.
-- Add soil analysis for various regions and suggestions based on the soil condition and climate.
-- Check Feedback from farmers.
-- Check reports – daily, weekly, monthly.
-- Download the report in an excel sheet.
-Agro Agencies:-
-- Login, Register.
-- Check training requests from farmers and agricultural students.
-Farmer:-
-- Login, and register.
-- Quick inquiry related to crops, fertilizers, vegetables, Seeds, and Fruits.
-- Search crops, fertilizers, vegetables, Seeds, and Fruits.
-## Installation
+#### a. Public Route Table
 
-Install Project Into Your Device
+- **Name:** `Public-RT`
+- **Associate with:** `Public-Subnet`
+- **Add Route:**  
+  `0.0.0.0/0` ➜ Internet Gateway
 
- 1) Open Your IDE
+#### b. Private Route Table
 
-2) File > Import > Project from Git > Clone URI >  IN URI Paste
+- **Name:** `Private-RT`
+- **Associate with:** `Private-App`, `Private-DB`
+- No external route initially.
+
+---
+
+## 🌍 3. NAT Gateway Setup
+
+### Why NAT?
+
+Private subnets need NAT to access the internet for updates/installations.
+
+### Steps
+
+1. **Allocate Elastic IP**  
+2. **Create NAT Gateway**
+   - Subnet: `Public-Subnet`
+   - Elastic IP: Use the one created above
+   - Name: `SpringBoot-NATGW`
+3. **Update Private Route Table**
+   - Add Route:
+     - `0.0.0.0/0` ➜ NAT Gateway
+
+---
+
+## 🔐 4. Security Groups
+
+| SG Name     | Attached To  | Inbound Rules                              | Outbound     |
+|-------------|--------------|---------------------------------------------|--------------|
+| Tomcat-SG   | Frontend EC2 | 22 (My IP), 8080 (Anywhere)                 | All traffic  |
+| App-SG      | Backend EC2  | 22 (My IP), 8081 (From Tomcat-SG)           | All traffic  |
+| DB-SG       | DB EC2       | 5432 (From App-SG), 22 (From Bastion if needed) | All traffic  |
+
+---
+
+## 💻 5. Launch EC2 Instances
+
+| Role      | AMI           | Subnet         | Type     | Ports      | Key Pair     |
+|-----------|---------------|----------------|----------|------------|--------------|
+| Frontend  | Ubuntu 22.04  | Public-Subnet  | t2.micro | 22, 8080   | trupti_key   |
+| Backend   | Ubuntu 22.04  | Private-App    | t2.micro | 8081       | trupti_key   |
+| Database  | Ubuntu 22.04  | Private-DB     | t2.micro | 5432       | trupti_key   |
+
+---
+
+## 🔑 6. Copy Private Key to Frontend Server
+
+### Step 1: Copy Key
 
 ```bash
-  https://github.com/GauravPatilGR/HOMESTEADERINDIA-Spring-Boot-Java-Project.git.
-```
-3) Enter your GitHub Username And Password and Simply Finish the Process.
+scp -i trupti-key.pem trupti-key.pem ubuntu@<frontend-public-ip>:/home/ubuntu/
+````
 
-  4) Note (In Your IDE Must Have Spring Boot Tool installed)
+### Step 2: Set Permissions
 
-  5) Right Click on Project > Configure > Convert Maven Project.
-
-  6) Then Open Project >  src/main/resources.
-
-  7) Open Application  Properties Copy the Database name Create a Database in Postgresql And Put your Database Password.
-
-   ![Src/maim/Resources](https://github.com/GauravPatilGR/HOMESTEADERINDIA-Spring-Boot-Java-Project/assets/123281827/bbe9e88a-89a0-4a12-a09d-d6dfa796679f)
-
-     8) Then Open  src/main/java > com. example. demo > CravitaProjectHomeSteaderApplication > Right Click And Run as > Spring Boot App.
-
-  ![Project Class to Run Project](https://github.com/GauravPatilGR/HOMESTEADERINDIA-Spring-Boot-Java-Project/assets/123281827/8c0b0204-5b4b-4035-afae-5e66776eedd3)
-
-  9) After Successfully Running the Project Go to Any browser that You are familiar with and Paste
-
-  
 ```bash
-  http://localhost:8080/farm
-```
-     
- ![Home Page](https://github.com/GauravPatilGR/HOMESTEADERINDIA-Spring-Boot-Java-Project/assets/123281827/befb791f-fcd9-4094-83a3-d693105a0466)
-    
-## Documentation
-
-[Project Tittle HomeSteaderIndia ](https://drive.google.com/file/d/1kH-WCFrIiqUMDn6PV3HR5xoWZdLGfplg/view?usp=sharing)(click here)
-
-
-## API Reference
-
-#### Get all items
-
-```http
- https://openweathermap.org/api
+ssh -i trupti-key.pem ubuntu@<frontend-public-ip>
+chmod 400 trupti-key.pem
 ```
 
-| Api Key | Type     | Description                |
-| :-------- | :------- | :------------------------- |
-| `d7a1a243f4df6a7fac09ca7c05aaeecc` | `string` | Use openweather Api to Get Live weather Update If  dosen't Work Use Your Api Key And Paste weather Controller |
+---
 
+## 🛢️ 7. DB Server Configuration (Private-DB)
 
+### Install PostgreSQL
 
+```bash
+sudo apt update
+sudo apt install postgresql postgresql-contrib -y
+```
 
+### Create DB & User
 
+```bash
+sudo -u postgres psql
+CREATE DATABASE homestadercravita;
+CREATE USER postgres WITH PASSWORD 'Grp4545@@';
+ALTER ROLE postgres WITH SUPERUSER;
+\q
+```
 
-![App Screenshot](https://github.com/GauravPatilGR/HOMESTEADERINDIA-Spring-Boot-Java-Project/assets/123281827/5f2096f4-7631-47ec-8272-2d04a9e14bd7)
+### Configure PostgreSQL
 
+* **File:** `/etc/postgresql/16/main/postgresql.conf`
 
+```bash
+listen_addresses = '*'
+```
 
+* **File:** `/etc/postgresql/16/main/pg_hba.conf`
 
+```
+host    all             all             10.0.0.0/16           md5
+```
 
+### Restart Service
 
+```bash
+sudo systemctl restart postgresql
+```
 
+---
 
+## 🧠 8. Backend Setup (Private-App)
 
+### SSH to Backend
 
+```bash
+ssh -i trupti-key.pem ubuntu@<frontend-public-ip>
+ssh -i trupti-key.pem ubuntu@<backend-private-ip>
+```
 
+### Install Dependencies
 
+```bash
+sudo apt update
+sudo apt install git maven openjdk-17-jdk -y
+```
 
+### Clone & Build Project
 
+```bash
+git clone https://github.com/iamtruptimane/springboot-java-project.git
+cd springboot-java-project
+MAVEN_OPTS="-Xmx2048m" mvn clean package
+```
 
+### Run App
 
+```bash
+nohup java -jar target/CravitaProject_HomeSteader-0.0.1-SNAPSHOT.jar > /tmp/app.log 2>&1 &
+```
 
+### Verify
 
+```bash
+curl http://localhost:8081/
+```
 
+---
 
-## Features
+## 🌐 9. Frontend Setup with Nginx
 
-- Live Prices of Products and Fertilizers
-- Live Weather Service for Every City
-- Quick Inquiry in 1 second
-- Free Platform for Farmers
-- Easy DataCollection 
-- Generate PDF or Excel File Report
+### Install Nginx
 
+```bash
+sudo apt update
+sudo apt install nginx -y
+```
 
+### Replace Default Config
 
+```bash
+sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bak
+sudo nano /etc/nginx/sites-available/default
+```
 
+### Paste Below Config
 
+```nginx
+server {
+    listen 80;
+    server_name _;
 
+    location / {
+        proxy_pass http://<backend-private-ip>:8081;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
 
-## YoutubeOverview
-[![Video](https://img.youtube.com/vi/JlvKlv1fBp0/maxresdefault.jpg)](https://www.youtube.com/watch?v=JlvKlv1fBp0)
+### Restart Nginx
+
+```bash
+sudo systemctl restart nginx
+```
+
+---
+
+## ✅ Access the App
+
+Visit:
+**http\://<frontend-public-ip>/**
+
+---
+
+## 📸 Screenshots
+
+You can include images here using:
+
+```md
+![Architecture](path-to-image.png)
+```
+
+Or drag them into the repository for documentation.
+
+---
+
+## 📌 Notes
+
+* Ensure security groups allow appropriate internal communication.
+* Ensure PostgreSQL security is only within VPC.
+* Use environment variables or config files to secure credentials in production.
+
+---
+
+```
+
+If you’d like, I can help you generate a downloadable `README.md` file directly or convert it into a GitHub-ready repository layout. Let me know!
+```
